@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>计科1403苏颖涛、龚海滨</title>
+	<link rel="stylesheet" type="text/css" href="./css/bootstrap.min.css">
+	<script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
+	<script type="text/javascript" src='./js/jquery.min.js'></script>
+	<script type="text/javascript" src='./js/echarts.common.min.js'></script>
+	<script type="text/javascript" src='./js/bootstrap.min.js'></script>
+	<script>if (window.module) module = window.module;</script>
+	<style type="text/css">
+	input{
+		margin: 2px;
+	}
+	button{
+		margin: 2px;
+	}
+	.inputArea{
+		margin: 5px;
+		width: 220px;
+		height: 100px;
+		float: left;
+
+	}
+	.method{
+		margin: 5px;
+		width: 180px;
+		height: 100px;
+		float: left;
+	}
+	.dataArea{
+		margin: 5px;
+		width: 120px;
+		height: 100px;
+		float: left;
+	}
+	</style>
+</head>
+<body>
+<!-- 	<div id="title" style="width:100%; height: 20px;-webkit-app-region: drag;-webkit-user-select: none;text-align: center"> 计科1403苏颖涛、龚海滨</div> -->
+	<div id='g1' style="width: 100%;height:440px;"></div>
+	<div style='width:100%;height:100px'>
+		<div class="inputArea">
+			<input id="start" type="number" class="form-control" placeholder="起始节点" >
+			<input id="end" type="number" class="form-control" placeholder="结束节点" >
+		</div>
+		<div class="method">
+			<button id="dfs" class="btn btn-default" type="submit">dfs</button>
+			<button id="bfs" class="btn btn-default" type="submit">bfs</button>
+			<button id="A" class="btn btn-default" type="submit">A*</button>
+			<button id="clean" class="btn btn-default" type="submit">clean</button>
+		</div>	
+		<div class="dataArea">
+			<div>最短距离:<b id='min'></b></div>
+			<div>所需时间:<b id='minTime'></b>ms</div>
+			<div>扩展节点数:<b id='expandNodeNum'></b></div>
+		</div>
+	</div>
+	<script type="text/javascript">
+	$(function(){
+		var drawTime = 400;
+		var num = 0;
+		var dfsPath = [];
+		var dfsPaths = [];
+		var bfsPath = [];
+		var bfsParent = [];
+		var aStarParent = [];
+		var aStarPath = [];
+		var expandNodeNum = 0;
+		var expandNode = [];
+		var g1 = echarts.init(document.getElementById('g1'));
+		window.onresize = g1.resize;
+		$('#dfs').on('click',function(){
+			var s = $('#start').val();
+			var e = $('#end').val();
+			var t1 = new Date();
+			var min=0;
+			var minPath=[];
+			dfsPath = [];
+			dfsPaths = [];
+			expandNodeNum = 0;
+			gragh.dfs(s,e);
+			for(let i in dfsPaths){
+				var temp = 0;
+				for(let n=0; n<dfsPaths[i].length-1;n++){
+					for(let m=0;m<gragh.adj[dfsPaths[i][n]].length;m++){
+						if(gragh.adj[dfsPaths[i][n]][m].end == dfsPaths[i][n+1]){
+							temp += gragh.adj[dfsPaths[i][n]][m].length;
+						}
+					}
+				}
+				if(!min || temp<min){
+					min = temp;
+					minPath = dfsPaths[i].toString().split(',');
+				}
+			}
+			expandNode = unique(expandNode);
+			expandNodeNum = expandNode.length;
+			var t2 = new Date() - t1;
+			minLine(minPath);
+		//	console.log('time:'+t2+'ms'+',expandNodeNum:'+expandNodeNum);
+			dataArea(min,t2,expandNodeNum);
+		});
+		$('#bfs').on('click',function(){
+			var s = $('#start').val();
+			var e = $('#end').val();
+			var t1 = new Date();
+			var min = 0;
+			bfsParent = [];
+			bfsPath = [];
+			expandNodeNum = 0;
+			if(gragh.bfs(s,e)){
+				let i = e;
+				bfsPath.unshift(e);
+				while(bfsParent[i]!=s){
+					bfsPath.unshift(bfsParent[i]);
+					i=bfsParent[i];
+					min++;
+				}
+				min++;
+				bfsPath.unshift(s);
+
+				var t2 = new Date() - t1;
+				console.log(expandNodeNum,t1,t2,bfsPath,bfsParent);
+				minLine(bfsPath);
+				dataArea(min,t2,expandNodeNum);
+			}
+			
+			else console.log("cant find path")
+		});
+		$('#A').on('click',function(){
+			var s = parseInt($('#start').val());
+			var e = parseInt($('#end').val());
+			var t1 = new Date();
+			var min = 0;
+			aStarParent = [];
+			aStarPath = [];
+			expandNodeNum = 0;
+			if(gragh.aStar(s,e)){
+				let i = e;
+				aStarPath.unshift(e);
+				while(aStarParent[i]!=s){
+					aStarPath.unshift(aStarParent[i]);
+					i=aStarParent[i];
+					min++;
+				}
+				min++;
+				aStarPath.unshift(s);
+				expandNode = unique(expandNode);
+				expandNodeNum = expandNode.length;
+				var t2 = new Date() - t1;
+				console.log(expandNodeNum,t1,t2);
+				minLine(aStarPath);
+				dataArea(min,t2,expandNodeNum);
+			}
+			else console.log("cant find path")
+			
+		});
+		$('#clean').on('click',function(){
+			cleanLine();
+			for (var i = 0; i < gragh.vertices; ++i) {
+		       gragh.marked[i] = false;
+		    }
+		    num=0;
+		});
+		//Gragh
+		function Gragh(v){
+			this.vertices = v;
+			this.edges = 0;
+			this.adj = [];
+			this.marked = [];
+			for (var i = 0; i < this.vertices; ++i) {
+	    	    this.adj[i] = [];
+		    }
+		    for (var i = 0; i < this.vertices; ++i) {
+		       this.marked[i] = false;
+		    }
+		}
+		Gragh.prototype.addEdge = function (start,end){
+			var length = Math.sqrt(Math.pow(Math.abs(data[start][0]-data[end][0]),2)+Math.pow(Math.abs(data[start][1]-data[end][1]),2));
+			var a = {end:end,length:length};
+			var b = {end:start,length:length};
+			this.adj[start].push(a);
+	  	 	this.adj[end].push(b);           
+	  		this.edges++;
+		}
+		Gragh.prototype.showGragh = function (){
+			for(let i = 0;i<this.vertices;i++){
+				let start = i+'';
+				for(let n=0;n<this.adj[i].length;n++){
+					end = '->' + this.adj[i][n].end + '距离' + this.adj[i][n].length;
+				//	console.log(start + end);
+				}
+			}
+		}
+		Gragh.prototype.dfs = function (v,end){
+			dfsPath.push(v);
+			if(v == end){
+				dfsPaths.push(dfsPath.toString().split(','));
+				console.log(dfsPath.toString().split(','));
+				dfsPath.pop();
+				return ;
+			}
+			this.marked[v] = true ;
+			if(this.adj[v].length>0){
+				if(this.adj[v].length>1)expandNode.push(v);
+				for(let i =0;i<this.adj[v].length;i++){
+					if(!this.marked[this.adj[v][i].end]){
+						num++;
+						let w = this.adj[v][i].end,l=this.adj[v][i].length;
+						//console.log(v+'->'+w);
+						setTimeout(function(){drawLine(v,w,l)},num*drawTime);	
+						this.dfs(this.adj[v][i].end,end)
+					}
+				}
+			}
+			this.marked[v] = false ;
+			dfsPath.pop();
+		}
+		Gragh.prototype.aStar = function (s,e){
+			var openList = [];
+			var f = [];
+			var g = [];
+			var h = [];
+			var next = s;
+			var now;
+			openList.push(s);
+			f[s]=0;
+			g[s]=0;
+			h[s]=Math.sqrt(Math.pow(Math.abs(data[s][0]-data[e][0]),2)+Math.pow(Math.abs(data[s][1]-data[e][1]),2));
+			var index; 
+			while(openList.length>0){
+				now = openList[0];
+				index = 0;
+				for(let i=0;i<openList.length;i++){
+					if(f[openList[i]]<f[now]){
+						now=openList[i];
+						index = i;
+					}
+				}
+				expandNode.push(now);
+				if(aStarParent[now]){
+					let v  = aStarParent[now];
+					let w = now;
+					num++;
+					setTimeout(function(){drawLine(v,w);},num*drawTime);
+				}
+				
+				openList.splice(index,1);
+				this.marked[now] = true;
+				for(let i=0;i<this.adj[now].length;i++){
+					w = this.adj[now][i].end;
+
+					if(!this.marked[w]){
+						if(openList.indexOf(w)== -1){
+							openList.push(w);
+							aStarParent[w] = now;
+							g[w] = g[now] + this.adj[now][i].length;
+							h[w]=Math.sqrt(Math.pow(Math.abs(data[w][0]-data[e][0]),2)+Math.pow(Math.abs(data[w][1]-data[e][1]),2));
+							f[w] = g[w]+h[w];
+						}
+						else {
+							if(g[now] + this.adj[now][i].length<g[w]){
+								aStarParent[w] = now;
+								g[w] = g[now] + this.adj[now][i].length;
+								f[w] = g[w]+h[w];
+							}
+						}
+						if(openList.indexOf(e)!=-1){
+							num++;
+							console.log(aStarParent[w],e)
+							console.log(openList);
+							setTimeout(function(){drawLine(aStarParent[w],e);},num*drawTime);
+							return true;
+						}
+						if(openList.length==0)return false;
+					}
+				}
+			}
+		}
+
+		Gragh.prototype.bfs = function (s,e){
+		    var queue = [];
+		    this.marked[s] = true;
+		    queue.push(s);//添加到队尾
+		    while(queue.length>0){
+		        let v = queue.shift();//从队首移除
+		        expandNodeNum ++;
+		        for(let i=0;i<this.adj[v].length;i++){
+		        	
+		            if(!this.marked[this.adj[v][i].end]){
+		                let w = this.adj[v][i].end,l=this.adj[v][i].length;
+		                bfsParent[w] = v;
+		                this.marked[this.adj[v][i].end] = true;
+		                num++;
+		                setTimeout(function(){drawLine(v,w,l);},num*drawTime);
+		                if(w == e){
+		        			return true ;
+				        }
+		                queue.push(this.adj[v][i].end);
+		            }
+		        }
+		    }
+		    return false;
+		    
+		}
+		gragh = new Gragh(100);
+		data = [];
+		for(let n = 0;n < gragh.vertices ; n++){
+			data.push([Math.random()*100,Math.random()*100,n]);
+		}	
+		defaultGragh();
+		//gragh.aStar(1,15);
+		function defaultGragh(){
+			gragh.addEdge(1,2);
+			gragh.addEdge(1,3);
+			gragh.addEdge(1,4);
+			gragh.addEdge(1,5);
+			gragh.addEdge(1,10);
+			gragh.addEdge(1,13);
+			gragh.addEdge(1,28);
+			gragh.addEdge(2,12);
+			gragh.addEdge(2,15);
+			gragh.addEdge(3,12);
+			gragh.addEdge(3,15);
+			gragh.addEdge(3,6);
+			gragh.addEdge(4,15);
+			gragh.addEdge(5,15);
+			gragh.addEdge(10,15);
+			gragh.addEdge(15,16);
+			gragh.addEdge(16,35);
+			gragh.addEdge(4,8);
+			gragh.addEdge(4,40);
+			gragh.addEdge(4,50);
+			gragh.addEdge(4,60);
+			gragh.addEdge(4,70);
+			gragh.addEdge(5,28);
+			gragh.addEdge(5,40);
+			gragh.addEdge(5,41);
+			gragh.addEdge(5,43);
+			gragh.addEdge(5,45);
+			gragh.addEdge(5,49);
+			gragh.addEdge(5,80);
+			gragh.addEdge(5,99);
+			gragh.addEdge(6,40);
+			gragh.addEdge(6,10);
+			gragh.addEdge(6,13);
+			gragh.addEdge(6,12);
+			gragh.addEdge(6,80);
+			gragh.addEdge(6,89);
+			gragh.addEdge(7,40);
+			gragh.addEdge(7,42);
+			gragh.addEdge(7,45);
+			gragh.addEdge(7,80);
+			gragh.addEdge(8,80);
+			gragh.addEdge(8,15);
+			gragh.addEdge(8,30);
+			gragh.addEdge(8,31);
+			gragh.addEdge(8,34);
+			gragh.addEdge(8,36);
+			gragh.addEdge(8,90);
+			gragh.addEdge(8,99);
+			gragh.addEdge(10,12);
+			gragh.addEdge(10,16);
+			gragh.addEdge(10,19);
+			gragh.addEdge(10,36);
+			gragh.addEdge(10,56);
+			gragh.addEdge(10,86);
+			gragh.addEdge(10,80);
+			gragh.addEdge(10,92);
+			gragh.addEdge(11,35);
+			gragh.addEdge(11,66);
+			console.log(gragh.adj)
+			
+			option = {
+			    backgroundColor: new echarts.graphic.RadialGradient(0.3, 0.3, 0.8, [{
+			        offset: 0,
+			        color: '#f7f8fa'
+			    }, {
+			        offset: 1,
+			        color: '#cdd0d5'
+			    }]),
+			    title: {
+			        text: ''
+			    },
+			    legend: {
+			        right: 10,
+			        data: ['node', 'initLine','line','minLine']
+			    },
+			    xAxis: {
+			        splitLine: {
+			            lineStyle: {
+			                type: 'dashed'
+			            }
+			        }
+			    },
+			    yAxis: {
+			        splitLine: {
+			            lineStyle: {
+			                type: 'dashed'
+			            }
+			        },
+			        scale: true
+			    },
+			    series: [{
+			        name: 'node',
+			        data: data,
+			        type: 'scatter',
+			        symbolSize: 10,
+			        label: {
+			            emphasis: {
+			                show: true,
+			                formatter: function (param) {
+			                    return param.data[3];
+			                },
+			                position: 'top'
+			            }
+			        },
+			        itemStyle: {
+			            normal: {
+			                shadowBlur: 10,
+			                shadowColor: 'rgba(120, 36, 50, 0.5)',
+			                shadowOffsetY: 5,
+			                color: new echarts.graphic.RadialGradient(0.4, 0.3, 1, [{
+			                    offset: 0,
+			                    color: 'rgb(251, 118, 123)'
+			                }, {
+			                    offset: 1,
+			                    color: 'rgb(204, 46, 72)'
+			                }])
+			            }
+			        }
+			    }]
+			};
+			g1.setOption(option);
+			initLine();
+		}
+		function initLine(s,e){
+			for(let i=0;i<gragh.vertices;i++){
+				for(let n=0;n<gragh.adj[i].length;n++){
+					dline(i,gragh.adj[i][n].end);
+				}
+			}
+			function dline(s,e){
+				option.series.push({
+			        type: 'line',
+			        name: 'initLine',
+			        data : [
+			              data[s],data[e]
+			            ],
+			        animation: false,
+			        label:{
+			        	normal:{
+			        		show:true
+			        	}
+			        }
+			    });
+			    g1.setOption(option)
+			}
+			
+		}
+		function minLine(path){
+		//	console.log(path);	
+			for(let i=0;i<path.length-1;i++){
+				option.series.push({
+			        type: 'line',
+			        name: 'minLine',
+			        data : [
+			              data[path[i]],data[path[i+1]]
+			            ],
+			        animation: false,
+			        label:{
+			        	normal:{
+			        		show:true
+			        	}
+			        },
+			        itemStyle: {
+	                	normal: {
+	                	    color: 'green'
+	                	}
+	                }
+			    });
+			    g1.setOption(option);
+			}
+		}
+		function drawLine(s,e,l){
+			option.series.push({
+		        type: 'line',
+		        name: 'line',
+		        data : [
+		              data[s],data[e]
+		            ],
+		        animation: false,
+		        label:{
+		        	normal:{
+		        		show:true
+		        	}
+		        },
+		        itemStyle: {
+                	normal: {
+                	    color: 'rgba(255,255,0,0.8)'
+                	}
+                }
+		    });
+		    g1.setOption(option)
+		    setTimeout(function(){
+	    		option.series[option.series.length-1]={
+			        type: 'line',
+			        name: 'line',
+			        data : [
+			              data[s],data[e]
+			            ],
+			        animation: false,
+			        label:{
+			        	normal:{
+			        		show:true
+			        	}
+			        },
+			        itemStyle: {
+	                	normal: {
+	                	    color: 'rgba(0,0,0,0.1)'
+	                	}
+	                }
+			    }
+		    	g1.setOption(option)
+		    },drawTime/2);
+		}
+		function cleanLine() {
+			option.series = [{
+		        name: 'node',
+		        data: data,
+		        type: 'scatter',
+		        symbolSize: 10,
+		        label: {
+		            emphasis: {
+		                show: true,
+		                formatter: function (param) {
+		                    return param.data[3];
+		                },
+		                position: 'top'
+		            }
+		        },
+		        itemStyle: {
+		            normal: {
+		                shadowBlur: 10,
+		                shadowColor: 'rgba(120, 36, 50, 0.5)',
+		                shadowOffsetY: 5,
+		                color: new echarts.graphic.RadialGradient(0.4, 0.3, 1, [{
+		                    offset: 0,
+		                    color: 'rgb(251, 118, 123)'
+		                }, {
+		                    offset: 1,
+		                    color: 'rgb(204, 46, 72)'
+		                }])
+		            }
+		        }
+		    }];
+		    g1.setOption(option,true);
+		    initLine();
+		}
+		function dataArea(min,time,nodesNum){
+			$('#min').html(min);
+			$('#minTime').html(time);
+			$('#expandNodeNum').html(nodesNum);
+		}
+		function unique(arr) {
+		    var result = [], hash = {};
+		    for (var i = 0, elem; (elem = arr[i]) != null; i++) {
+		        if (!hash[elem]) {
+		            result.push(elem);
+		            hash[elem] = true;
+		        }
+		    }
+		    return result;
+		}
+	})
+	
+	</script>
+</body>
+</html>
