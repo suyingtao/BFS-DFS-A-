@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>计科1403苏颖涛、龚海滨</title>
+	<title>计科1403苏颖涛、弓海斌</title>
 	<link rel="stylesheet" type="text/css" href="./css/bootstrap.min.css">
 	<script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
 	<script type="text/javascript" src='./js/jquery.min.js'></script>
@@ -35,10 +35,20 @@
 		height: 100px;
 		float: left;
 	}
+	#holder{
+		position: fixed;
+		left:0;
+		width: 100%;
+		bottom: 0;
+		background: #EEE;
+		padding-left: 40px;
+		height: 40px;
+		border-top:1px solid #222;
+		line-height: 40px;
+	}
 	</style>
 </head>
 <body>
-<!-- 	<div id="title" style="width:100%; height: 20px;-webkit-app-region: drag;-webkit-user-select: none;text-align: center"> 计科1403苏颖涛、龚海滨</div> -->
 	<div id='g1' style="width: 100%;height:440px;"></div>
 	<div style='width:100%;height:100px'>
 		<div class="inputArea">
@@ -50,15 +60,23 @@
 			<button id="bfs" class="btn btn-default" type="submit">bfs</button>
 			<button id="A" class="btn btn-default" type="submit">A*</button>
 			<button id="clean" class="btn btn-default" type="submit">clean</button>
+			<button id="addE" class="btn btn-default" type="submit">add edge</button>
 		</div>	
 		<div class="dataArea">
+			<div>状态:<b id='status'>未开始</b></div>
 			<div>最短距离:<b id='min'></b></div>
 			<div>所需时间:<b id='minTime'></b>ms</div>
 			<div>扩展节点数:<b id='expandNodeNum'></b></div>
 		</div>
 	</div>
+	<div id="holder">
+	    将数据文件拖动到此处
+	</div>
 	<script type="text/javascript">
 	$(function(){
+		var clicknum = 0;
+		var startNode;
+		var endNode;
 		var drawTime = 400;
 		var num = 0;
 		var dfsPath = [];
@@ -70,7 +88,13 @@
 		var expandNodeNum = 0;
 		var expandNode = [];
 		var g1 = echarts.init(document.getElementById('g1'));
+		console.log(g1);
 		window.onresize = g1.resize;
+		function status(s){
+			var status = $('#status');
+			if(s==1)status.html('成功');
+			else status.html('失败');
+		}
 		$('#dfs').on('click',function(){
 			var s = $('#start').val();
 			var e = $('#end').val();
@@ -80,6 +104,7 @@
 			dfsPath = [];
 			dfsPaths = [];
 			expandNodeNum = 0;
+			expandNode = []
 			gragh.dfs(s,e);
 			for(let i in dfsPaths){
 				var temp = 0;
@@ -99,7 +124,6 @@
 			expandNodeNum = expandNode.length;
 			var t2 = new Date() - t1;
 			minLine(minPath);
-		//	console.log('time:'+t2+'ms'+',expandNodeNum:'+expandNodeNum);
 			dataArea(min,t2,expandNodeNum);
 		});
 		$('#bfs').on('click',function(){
@@ -120,14 +144,18 @@
 				}
 				min++;
 				bfsPath.unshift(s);
-
 				var t2 = new Date() - t1;
-				console.log(expandNodeNum,t1,t2,bfsPath,bfsParent);
 				minLine(bfsPath);
 				dataArea(min,t2,expandNodeNum);
+				status(1);
 			}
 			
-			else console.log("cant find path")
+			else{
+				var t2 = new Date() - t1;
+				dataArea(0,t2,expandNodeNum);
+				status(0);
+			} 
+				
 		});
 		$('#A').on('click',function(){
 			var s = parseInt($('#start').val());
@@ -137,24 +165,37 @@
 			aStarParent = [];
 			aStarPath = [];
 			expandNodeNum = 0;
+			expandNode = [];
 			if(gragh.aStar(s,e)){
 				let i = e;
 				aStarPath.unshift(e);
 				while(aStarParent[i]!=s){
 					aStarPath.unshift(aStarParent[i]);
 					i=aStarParent[i];
-					min++;
 				}
-				min++;
 				aStarPath.unshift(s);
+				for(let n=0; n<aStarPath.length-1;n++){
+					for(let m=0;m<gragh.adj[aStarPath[n]].length;m++){
+						if(gragh.adj[aStarPath[n]][m].end == aStarPath[n+1]){
+							min += gragh.adj[aStarPath[n]][m].length;
+						}
+					}
+				}
 				expandNode = unique(expandNode);
 				expandNodeNum = expandNode.length;
 				var t2 = new Date() - t1;
-				console.log(expandNodeNum,t1,t2);
 				minLine(aStarPath);
+				console.log(aStarPath,aStarParent);
 				dataArea(min,t2,expandNodeNum);
+				status(1);
 			}
-			else console.log("cant find path")
+			else {
+				var t2 = new Date() - t1;
+				expandNode = unique(expandNode);
+				expandNodeNum = expandNode.length;
+				dataArea(0,t2,expandNodeNum);
+				status(0);
+			}
 			
 		});
 		$('#clean').on('click',function(){
@@ -163,6 +204,43 @@
 		       gragh.marked[i] = false;
 		    }
 		    num=0;
+		});
+
+		$('#addE').on('click',function(){
+			clicknum = 0;
+			startNode = null;
+			endNode = null;
+			
+		})
+		g1.on('click', function (params) {
+		    switch(clicknum){
+		    	case 0 : 
+		    		startNode = params;
+		    		clicknum++;
+		    		break;
+		    	case 1 :
+		    		endNode = params;
+		    		clicknum++;
+		    		gragh.addEdge(startNode.data[2],endNode.data[2]);
+		    		option.series.push({
+				        type: 'line',
+				        name: 'initLine',
+				        data : [
+				              data[startNode.data[2]],data[endNode.data[2]]
+				            ],
+				        animation: false,
+				        label:{
+				        	normal:{
+				        		show:true
+				        	}
+				        }
+				    });
+				    g1.setOption(option)
+		    		break;
+
+		    	default:
+		    		break;
+		    }
 		});
 		//Gragh
 		function Gragh(v){
@@ -190,7 +268,6 @@
 				let start = i+'';
 				for(let n=0;n<this.adj[i].length;n++){
 					end = '->' + this.adj[i][n].end + '距离' + this.adj[i][n].length;
-				//	console.log(start + end);
 				}
 			}
 		}
@@ -198,7 +275,6 @@
 			dfsPath.push(v);
 			if(v == end){
 				dfsPaths.push(dfsPath.toString().split(','));
-				console.log(dfsPath.toString().split(','));
 				dfsPath.pop();
 				return ;
 			}
@@ -209,7 +285,6 @@
 					if(!this.marked[this.adj[v][i].end]){
 						num++;
 						let w = this.adj[v][i].end,l=this.adj[v][i].length;
-						//console.log(v+'->'+w);
 						setTimeout(function(){drawLine(v,w,l)},num*drawTime);	
 						this.dfs(this.adj[v][i].end,end)
 					}
@@ -240,7 +315,7 @@
 					}
 				}
 				expandNode.push(now);
-				if(aStarParent[now]){
+				if(aStarParent[now]!=undefined){
 					let v  = aStarParent[now];
 					let w = now;
 					num++;
@@ -269,8 +344,7 @@
 						}
 						if(openList.indexOf(e)!=-1){
 							num++;
-							console.log(aStarParent[w],e)
-							console.log(openList);
+							console.log(aStarParent[w],e);
 							setTimeout(function(){drawLine(aStarParent[w],e);},num*drawTime);
 							return true;
 						}
@@ -305,74 +379,49 @@
 		    return false;
 		    
 		}
-		gragh = new Gragh(100);
+		gragh = new Gragh(50);
 		data = [];
 		for(let n = 0;n < gragh.vertices ; n++){
 			data.push([Math.random()*100,Math.random()*100,n]);
 		}	
 		defaultGragh();
-		//gragh.aStar(1,15);
 		function defaultGragh(){
 			gragh.addEdge(1,2);
 			gragh.addEdge(1,3);
-			gragh.addEdge(1,4);
-			gragh.addEdge(1,5);
 			gragh.addEdge(1,10);
 			gragh.addEdge(1,13);
 			gragh.addEdge(1,28);
 			gragh.addEdge(2,12);
 			gragh.addEdge(2,15);
 			gragh.addEdge(3,12);
-			gragh.addEdge(3,15);
+			gragh.addEdge(3,35);
 			gragh.addEdge(3,6);
 			gragh.addEdge(4,15);
-			gragh.addEdge(5,15);
-			gragh.addEdge(10,15);
+			gragh.addEdge(5,23);
+			gragh.addEdge(10,41);
 			gragh.addEdge(15,16);
 			gragh.addEdge(16,35);
 			gragh.addEdge(4,8);
 			gragh.addEdge(4,40);
-			gragh.addEdge(4,50);
-			gragh.addEdge(4,60);
-			gragh.addEdge(4,70);
 			gragh.addEdge(5,28);
 			gragh.addEdge(5,40);
-			gragh.addEdge(5,41);
-			gragh.addEdge(5,43);
 			gragh.addEdge(5,45);
 			gragh.addEdge(5,49);
-			gragh.addEdge(5,80);
-			gragh.addEdge(5,99);
 			gragh.addEdge(6,40);
-			gragh.addEdge(6,10);
 			gragh.addEdge(6,13);
 			gragh.addEdge(6,12);
-			gragh.addEdge(6,80);
-			gragh.addEdge(6,89);
 			gragh.addEdge(7,40);
 			gragh.addEdge(7,42);
 			gragh.addEdge(7,45);
-			gragh.addEdge(7,80);
-			gragh.addEdge(8,80);
 			gragh.addEdge(8,15);
 			gragh.addEdge(8,30);
 			gragh.addEdge(8,31);
 			gragh.addEdge(8,34);
 			gragh.addEdge(8,36);
-			gragh.addEdge(8,90);
-			gragh.addEdge(8,99);
 			gragh.addEdge(10,12);
-			gragh.addEdge(10,16);
 			gragh.addEdge(10,19);
 			gragh.addEdge(10,36);
-			gragh.addEdge(10,56);
-			gragh.addEdge(10,86);
-			gragh.addEdge(10,80);
-			gragh.addEdge(10,92);
-			gragh.addEdge(11,35);
-			gragh.addEdge(11,66);
-			console.log(gragh.adj)
-			
+
 			option = {
 			    backgroundColor: new echarts.graphic.RadialGradient(0.3, 0.3, 0.8, [{
 			        offset: 0,
@@ -452,7 +501,8 @@
 			        animation: false,
 			        label:{
 			        	normal:{
-			        		show:true
+			        		show:true,
+			        		color: 'rgba(255,255,0,0.8)'
 			        	}
 			        }
 			    });
@@ -461,7 +511,6 @@
 			
 		}
 		function minLine(path){
-		//	console.log(path);	
 			for(let i=0;i<path.length-1;i++){
 				option.series.push({
 			        type: 'line',
@@ -560,7 +609,7 @@
 		    initLine();
 		}
 		function dataArea(min,time,nodesNum){
-			$('#min').html(min);
+			$('#min').html(min.toFixed(5));
 			$('#minTime').html(time);
 			$('#expandNodeNum').html(nodesNum);
 		}
@@ -573,6 +622,34 @@
 		        }
 		    }
 		    return result;
+		}
+		function loadData(s){
+			gragh = new Gragh(parseInt(s.v));
+			data = s.data;
+			for(let i in s.edges){
+				gragh.addEdge(s.edges[i][0],s.edges[i][1]);
+			}
+			cleanLine();
+		}
+
+
+		var fs = require('fs');
+		const holder = document.getElementById('holder')
+		holder.ondragover = () => {
+			return false;
+		}
+		holder.ondragleave = holder.ondragend = () => {
+		    return false;
+		}
+	    holder.ondrop = (e) => {
+		    e.preventDefault()
+		    var file = e.dataTransfer.files[0];
+		    fs.readFile(file.path,'utf8',function(err,data){
+		        data = JSON.parse(data);
+		        loadData(data);
+                holder.textContent = "读取成功";
+		    });
+		    return false;
 		}
 	})
 	
