@@ -18,20 +18,20 @@
 	}
 	.inputArea{
 		margin: 5px;
-		width: 220px;
+		width: 110px;
 		height: 100px;
 		float: left;
 
 	}
 	.method{
 		margin: 5px;
-		width: 180px;
+		width: 260px;
 		height: 100px;
 		float: left;
 	}
 	.dataArea{
 		margin: 5px;
-		width: 120px;
+		width: 160px;
 		height: 100px;
 		float: left;
 	}
@@ -45,6 +45,25 @@
 		height: 40px;
 		border-top:1px solid #222;
 		line-height: 40px;
+	}
+	#mask {
+	    position: absolute;
+	    left: 0;
+	    top: 0;
+	    z-index: 10000;
+	    height: 100%;
+	    width: 100%;
+	    background: #000;
+	    opacity: 0.85;
+	    display: none;
+	}
+	#inputXY{
+		position: fixed;
+		top:60%;
+		left:50%;
+		margin-left: -80px;
+		height:50px;
+		width: 160px;
 	}
 	</style>
 </head>
@@ -61,6 +80,8 @@
 			<button id="A" class="btn btn-default" type="submit">A*</button>
 			<button id="clean" class="btn btn-default" type="submit">clean</button>
 			<button id="addE" class="btn btn-default" type="submit">add edge</button>
+			<button id="addN" class="btn btn-default" type="submit">add node</button>
+			<button id="save" class="btn btn-default" type="submit">save</button>
 		</div>	
 		<div class="dataArea">
 			<div>状态:<b id='status'>未开始</b></div>
@@ -71,6 +92,14 @@
 	</div>
 	<div id="holder">
 	    将数据文件拖动到此处
+	</div>
+	<div id="mask">
+		<div id="inputXY">
+			<input id="X" type="number" class="form-control" placeholder="X坐标" >
+			<input id="Y" type="number" class="form-control" placeholder="Y坐标" >
+			<button id="cancellBtn" class="btn btn-default" type="submit">取消</button>
+			<button id="addNodeBtn" class="btn btn-default" type="submit">确定</button>
+		</div>
 	</div>
 	<script type="text/javascript">
 	$(function(){
@@ -88,8 +117,8 @@
 		var expandNodeNum = 0;
 		var expandNode = [];
 		var g1 = echarts.init(document.getElementById('g1'));
-		console.log(g1);
 		window.onresize = g1.resize;
+
 		function status(s){
 			var status = $('#status');
 			if(s==1)status.html('成功');
@@ -123,8 +152,17 @@
 			expandNode = unique(expandNode);
 			expandNodeNum = expandNode.length;
 			var t2 = new Date() - t1;
-			minLine(minPath);
-			dataArea(min,t2,expandNodeNum);
+			if(minPath.length != 0){
+				console.log(minPath);
+				minLine(minPath);
+				dataArea(min,t2,expandNodeNum);
+				status(1);
+			}
+			else {
+				status(0);
+				dataArea(min,t2,expandNodeNum);
+			}
+			
 		});
 		$('#bfs').on('click',function(){
 			var s = $('#start').val();
@@ -185,7 +223,6 @@
 				expandNodeNum = expandNode.length;
 				var t2 = new Date() - t1;
 				minLine(aStarPath);
-				console.log(aStarPath,aStarParent);
 				dataArea(min,t2,expandNodeNum);
 				status(1);
 			}
@@ -210,8 +247,8 @@
 			clicknum = 0;
 			startNode = null;
 			endNode = null;
-			
 		})
+
 		g1.on('click', function (params) {
 		    switch(clicknum){
 		    	case 0 : 
@@ -242,6 +279,31 @@
 		    		break;
 		    }
 		});
+
+		$('#addN').on('click',function(){
+			var mask = document.getElementById("mask");
+			mask.style.display = "block";
+			var X = parseInt($('#X').val());
+			var Y = parseInt($('#Y').val());
+
+		})
+		$('#addNodeBtn').on('click',function(){
+			var X = parseInt($('#X').val());
+			var Y = parseInt($('#Y').val());
+			gragh.vertices++;
+			gragh.adj[gragh.vertices-1] = [];
+			data.push([X,Y,gragh.vertices-1]);
+
+			g1.setOption(option);
+			var mask = document.getElementById("mask");
+			mask.style.display = "none";
+		})
+		$('#cancellBtn').on('click',function(){
+			var mask = document.getElementById("mask");
+			mask.style.display = "none";
+		})
+
+
 		//Gragh
 		function Gragh(v){
 			this.vertices = v;
@@ -344,7 +406,6 @@
 						}
 						if(openList.indexOf(e)!=-1){
 							num++;
-							console.log(aStarParent[w],e);
 							setTimeout(function(){drawLine(aStarParent[w],e);},num*drawTime);
 							return true;
 						}
@@ -379,12 +440,7 @@
 		    return false;
 		    
 		}
-		gragh = new Gragh(50);
-		data = [];
-		for(let n = 0;n < gragh.vertices ; n++){
-			data.push([Math.random()*100,Math.random()*100,n]);
-		}	
-		defaultGragh();
+
 		function defaultGragh(){
 			gragh.addEdge(1,2);
 			gragh.addEdge(1,3);
@@ -534,27 +590,20 @@
 			}
 		}
 		function drawLine(s,e,l){
-			option.series.push({
-		        type: 'line',
-		        name: 'line',
-		        data : [
-		              data[s],data[e]
-		            ],
-		        animation: false,
-		        label:{
-		        	normal:{
-		        		show:true
-		        	}
-		        },
-		        itemStyle: {
-                	normal: {
-                	    color: 'rgba(255,255,0,0.8)'
-                	}
-                }
-		    });
-		    g1.setOption(option)
-		    setTimeout(function(){
-	    		option.series[option.series.length-1]={
+			let index = -1;
+			let index2 = -1;
+			for(let a in option.series){
+				if(option.series[a].name == 'line'){
+					if(option.series[a].data[0][2] == s && option.series[a].data[1][2] == e){
+						index = a;
+						console.log(index);
+						break;
+					}
+				}
+			}
+				
+			if(index == -1){
+				option.series.push({
 			        type: 'line',
 			        name: 'line',
 			        data : [
@@ -568,12 +617,41 @@
 			        },
 			        itemStyle: {
 	                	normal: {
-	                	    color: 'rgba(0,0,0,0.1)'
+	                	    color: 'rgba(255,255,0,0.8)'
 	                	}
 	                }
-			    }
+			    });
+			    index2 = option.series.length -1;
+			}
+			else {
+				console.log(option.series[index]);
+				option.series[index].itemStyle.normal.color = 'rgba(255,255,0,0.8)';
+				index2 = index;
+			}
+			
+		    g1.setOption(option)
+		    setTimeout(function(){
+		    	option.series[index2].itemStyle.normal.color = 'rgba(0,0,0,0.1)';
+	    		// option.series[option.series.length-1]={
+			    //     type: 'line',
+			    //     name: 'line',
+			    //     data : [
+			    //           data[s],data[e]
+			    //         ],
+			    //     animation: false,
+			    //     label:{
+			    //     	normal:{
+			    //     		show:true
+			    //     	}
+			    //     },
+			    //     itemStyle: {
+	      //           	normal: {
+	      //           	    color: 'rgba(0,0,0,0.1)'
+	      //           	}
+	      //           }
+			    // }
 		    	g1.setOption(option)
-		    },drawTime/2);
+		    },drawTime/4);
 		}
 		function cleanLine() {
 			option.series = [{
@@ -632,7 +710,15 @@
 			cleanLine();
 		}
 
+		//defaultGraph 	
+		gragh = new Gragh(50);
+		data = [];
+		for(let n = 0;n < gragh.vertices ; n++){
+			data.push([Math.random()*100,Math.random()*100,n]);
+		}	
+		defaultGragh();
 
+		//drag data source 
 		var fs = require('fs');
 		const holder = document.getElementById('holder')
 		holder.ondragover = () => {
@@ -651,6 +737,7 @@
 		    });
 		    return false;
 		}
+
 	})
 	
 	</script>
