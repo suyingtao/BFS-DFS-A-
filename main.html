@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="height:100%;">
 <head>
 	<meta charset="UTF-8">
 	<title>计科1403苏颖涛、弓海斌</title>
@@ -18,20 +18,20 @@
 	}
 	.inputArea{
 		margin: 5px;
-		width: 110px;
+		width: 15%;
 		height: 100px;
 		float: left;
 
 	}
 	.method{
 		margin: 5px;
-		width: 260px;
+		width: 45%;
 		height: 100px;
 		float: left;
 	}
 	.dataArea{
 		margin: 5px;
-		width: 160px;
+		width: 35%;
 		height: 100px;
 		float: left;
 	}
@@ -67,8 +67,8 @@
 	}
 	</style>
 </head>
-<body>
-	<div id='g1' style="width: 100%;height:440px;"></div>
+<body style="height:100%;">
+	<div id='g1' style="width: 100%;height:75%;"></div>
 	<div style='width:100%;height:100px'>
 		<div class="inputArea">
 			<input id="start" type="number" class="form-control" placeholder="起始节点" >
@@ -103,6 +103,8 @@
 	</div>
 	<script type="text/javascript">
 	$(function(){
+		var path = require('path');
+		var fs = require('fs');
 		var clicknum = 0;
 		var startNode;
 		var endNode;
@@ -124,6 +126,25 @@
 			if(s==1)status.html('成功');
 			else status.html('失败');
 		}
+		$('#save').on('click',function(){
+			console.log(gragh)
+			var outputData = {}
+			outputData.v = gragh.vertices;
+			outputData.data = data;
+			outputData.edges = [];
+			for(let x in gragh.adj){
+				for(let y in gragh.adj[x]){
+					if(parseInt(x)<gragh.adj[x][y].end)
+					outputData.edges.push(new Array(parseInt(x),gragh.adj[x][y].end))
+				}
+			}
+			console.log(outputData);
+			console.log(__dirname)
+			fs.writeFile(__dirname + '/saveData.txt', JSON.stringify(outputData), function (err) {
+			    if (!err)
+			    	alert('保存成功,/saveData.txt');
+			})
+		});
 		$('#dfs').on('click',function(){
 			var s = $('#start').val();
 			var e = $('#end').val();
@@ -293,7 +314,7 @@
 			gragh.vertices++;
 			gragh.adj[gragh.vertices-1] = [];
 			data.push([X,Y,gragh.vertices-1]);
-
+			gragh.marked.push(false);
 			g1.setOption(option);
 			var mask = document.getElementById("mask");
 			mask.style.display = "none";

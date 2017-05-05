@@ -26,7 +26,7 @@ function createWindow () {
   width: 700,
   // titleBarStyle: 'hidden' ,
   height: 600,
-  minWidth:550,
+  minWidth:600,
   minHeight:550
 })
   // 加载应用的 index.html。
